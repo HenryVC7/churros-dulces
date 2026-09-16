@@ -26,10 +26,17 @@ productos.forEach((producto) => {
         const nombre = producto.dataset.nombre;
         const precio = Number(producto.dataset.precio);
 
-        carrito.push({
-            nombre: nombre,
-            precio: precio
-        });
+        const productoExistente = carrito.find((item) => item.nombre === nombre);
+
+        if (productoExistente) {
+            productoExistente.cantidad += 1;
+        } else {
+            carrito.push({
+                nombre: nombre,
+                precio: precio,
+                cantidad: 1
+            });
+        }
 
         mostrarCarrito();
     });
@@ -55,11 +62,13 @@ function mostrarCarrito() {
 
     carrito.forEach((producto) => {
 
+        const subtotal = producto.precio * producto.cantidad;
+
         contenido += `
-            <p>${producto.nombre} - S/ ${producto.precio.toFixed(2)}</p>
+            <p>${producto.nombre} × ${producto.cantidad} - S/ ${subtotal.toFixed(2)}</p>
         `;
 
-        total += producto.precio;
+        total += subtotal;
     });
 
     contenido += `
