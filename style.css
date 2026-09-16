@@ -1,0 +1,148 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background-color: #fff8f0;
+    color: #333;
+}
+
+header {
+    text-align: center;
+    padding: 60px 20px;
+    background-color: #f4a261;
+    color: white;
+}
+
+header h1 {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+header p {
+    font-size: 20px;
+}
+
+button {
+    background-color: #8b4513;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+main {
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+section {
+    margin-bottom: 50px;
+}
+
+h2 {
+    text-align: center;
+    font-size: 32px;
+}
+
+article {
+    background-color: white;
+    padding: 25px;
+    margin: 20px 0;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+article h3 {
+    font-size: 24px;
+}
+
+article strong {
+    display: block;
+    font-size: 20px;
+    margin: 15px 0;
+}
+
+footer {
+    text-align: center;
+    padding: 25px;
+    background-color: #8b4513;
+    color: white;
+}
+.productos {
+    display: flex;
+    gap: 25px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.productos article {
+    width: 250px;
+    text-align: center;
+    transition: transform 0.3s;
+}
+
+.productos article:hover {
+    transform: translateY(-8px);
+}
+
+.emoji-producto {
+    font-size: 60px;
+}
+nav {
+    max-width: 1100px;
+    margin: auto;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+nav h1 {
+    margin: 0;
+    font-size: 28px;
+}
+
+nav div {
+    display: flex;
+    gap: 25px;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    transition: opacity 0.3s;
+}
+
+nav a:hover {
+    opacity: 0.7;
+}
+
+.hero {
+    max-width: 800px;
+    margin: 60px auto 20px;
+    text-align: center;
+}
+
+.hero h2 {
+    font-size: 42px;
+    margin-bottom: 15px;
+}
+
+.hero p {
+    font-size: 19px;
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.hero button {
+    font-size: 17px;
+    padding: 14px 28px;
+    transition: transform 0.3s, opacity 0.3s;
+}
+
+.hero button:hover {
+    transform: scale(1.05);
+    opacity: 0.9;
+}
