@@ -3,7 +3,7 @@
 ## Fase 1 - Preparación
 - Crear la estructura inicial del proyecto.
 - Crear la documentación del proyecto.
-- Configurar Git.
+- Git configurado.
 
 ## Fase 2 - Página web
 - Crear la página de inicio.
@@ -24,9 +24,9 @@
 - Generar mensaje para WhatsApp.
 
 ## Fase 5 - Git y GitHub
-- Crear repositorio.
-- Realizar commits.
-- Subir el proyecto a GitHub.
+- Repositorio local creado.
+- Primer commit realizado.
+- Proyecto conectado al repositorio remoto `origin` y subido a GitHub.
 
 ## Fase 6 - Backend
 - Conectar Supabase.
@@ -45,6 +45,6 @@
 
 ## Estado actual
 
-- Fase 1 - Preparación: estructura y documentación completadas. Falta configurar Git.
+- Fase 1 - Preparación: completada. Estructura y documentación creadas, y Git configurado.
 - Fase 2 - Página web: en progreso.
 - Fase 3 - Carrito: iniciada. Ya se pueden agregar productos y calcular el total.
