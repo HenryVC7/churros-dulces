@@ -146,3 +146,25 @@ nav a:hover {
     transform: scale(1.05);
     opacity: 0.9;
 }
+
+.carrito-producto {
+    margin-bottom: 20px;
+    overflow-wrap: anywhere;
+}
+
+.carrito-controles {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.carrito-controles button {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+.carrito-controles button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
