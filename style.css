@@ -174,6 +174,53 @@ nav a:hover {
     cursor: not-allowed;
 }
 
+.pedido form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pedido label {
+    font-weight: bold;
+}
+
+.pedido input,
+.pedido textarea,
+.pedido button {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
+    font: inherit;
+}
+
+.pedido input,
+.pedido textarea {
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid #8b4513;
+    border-radius: 8px;
+    background-color: white;
+    color: #333;
+}
+
+.pedido textarea {
+    resize: vertical;
+}
+
+.pedido button,
+#estado-pedido {
+    overflow-wrap: anywhere;
+}
+
+#mensaje-pedido {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: inherit;
+    line-height: 1.6;
+}
+
 /* Tablet y celular: espacio para el nombre y enlaces faciles de tocar. */
 @media (max-width: 768px) {
     nav {
