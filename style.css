@@ -77,7 +77,12 @@ footer {
 }
 
 .productos article {
-    width: 250px;
+    /* El ancho incluye los 25px de relleno de cada lado. */
+    box-sizing: border-box;
+    width: 300px;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
     text-align: center;
     transition: transform 0.3s;
 }
@@ -167,4 +172,69 @@ nav a:hover {
 .carrito-controles button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Tablet y celular: espacio para el nombre y enlaces faciles de tocar. */
+@media (max-width: 768px) {
+    nav {
+        flex-direction: column;
+        gap: 16px;
+        padding: 16px 0;
+    }
+
+    nav div {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        max-width: 100%;
+    }
+
+    nav a {
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 10px;
+    }
+}
+
+/* Celular: titulos y espacios mas compactos. */
+@media (max-width: 480px) {
+    header {
+        padding: 30px 20px;
+    }
+
+    nav h1 {
+        font-size: 24px;
+    }
+
+    .hero {
+        margin: 30px auto 10px;
+    }
+
+    .hero h2 {
+        font-size: 30px;
+    }
+
+    .hero p {
+        font-size: 17px;
+        margin-bottom: 24px;
+    }
+
+    h2 {
+        font-size: 26px;
+    }
+
+    article h3 {
+        font-size: 22px;
+    }
+
+    main {
+        margin: 30px auto;
+    }
+
+    section {
+        margin-bottom: 36px;
+    }
 }
