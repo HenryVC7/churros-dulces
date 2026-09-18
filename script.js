@@ -76,6 +76,11 @@ formularioPedido.addEventListener("submit", (evento) => {
         return;
     }
 
+    if (!/^[1-9][0-9]{6,14}$/.test(NUMERO_WHATSAPP_NEGOCIO)) {
+        estadoPedido.textContent = "El número del negocio debe tener entre 7 y 15 dígitos, incluir el código de país y no contener +, espacios ni guiones. No puede comenzar con 0.";
+        return;
+    }
+
     window.open(`https://wa.me/${NUMERO_WHATSAPP_NEGOCIO}?text=${mensajeCodificado}`, "_blank", "noopener,noreferrer");
     estadoPedido.textContent = "Pedido preparado. Confirma el envío en WhatsApp.";
 });
