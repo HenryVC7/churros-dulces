@@ -41,4 +41,7 @@ la página permitirá mostrar los productos, agregarlos a un carrito y realizar 
 - automatizaciones
 - inteligencia artificial
 ## estado
-proyecto inicial.
+Carrito y pedidos implementados: cantidades, eliminación, subtotales, total, formulario con validación y vista previa del pedido.
+La integración mediante `wa.me` fue probada localmente, según confirmación del usuario. El cliente confirma el envío dentro de WhatsApp.
+El número comercial está intencionalmente sin configurar. Antes de publicar la web debe configurarse un número comercial autorizado y verificarse el envío al destinatario correcto. El número personal de prueba fue retirado.
+Consultar ROADMAP.md para el estado de las fases y los siguientes pasos.

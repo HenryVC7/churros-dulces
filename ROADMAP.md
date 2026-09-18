@@ -39,6 +39,7 @@
 - Explorar agentes de IA.
 
 ## Fase 8 - Publicación
+- Antes de publicar, configurar un número comercial autorizado en `NUMERO_WHATSAPP_NEGOCIO`, en formato internacional, y comprobar el destinatario y el mensaje en WhatsApp.
 - Publicar el proyecto.
 - Conectar el frontend con el backend.
 - Probar la aplicación.
@@ -47,4 +48,8 @@
 
 - Fase 1 - Preparación: completada. Estructura y documentación creadas, y Git configurado.
 - Fase 2 - Página web: en progreso.
-- Fase 3 - Carrito: iniciada. Ya se pueden agregar productos y calcular el total.
+- Fase 3 - Carrito: completada. Permite agregar productos, modificar cantidades, eliminar productos y calcular subtotales y total.
+- Fase 4 - Pedidos: completada en su alcance funcional. Formulario del cliente, validación, vista previa e integración mediante `wa.me` implementados. Prueba local de WhatsApp confirmada por el usuario.
+- El número comercial definitivo está pendiente de configuración intencionalmente. `NUMERO_WHATSAPP_NEGOCIO` permanece vacío y bloquea la apertura de WhatsApp; la vista previa sigue disponible. El número personal utilizado para la prueba fue retirado.
+- Fase 5 - Git y GitHub: los hitos definidos ya están realizados (repositorio local, primer commit y conexión y subida a GitHub).
+- Siguiente fase de implementación: Fase 6 - Backend.
