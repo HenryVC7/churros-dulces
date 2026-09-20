@@ -94,8 +94,76 @@ botonVerProductos.addEventListener("click", () => {
     });
 });
 
-// Buscamos todos los productos
-const productos = document.querySelectorAll(".producto");
+// Configuracion publica para consultar el catalogo. No usar claves secretas.
+const SUPABASE_URL = "https://pjiwqnhbmskimuqykiur.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_N1UERy8hV2xEuYIHDK3L_A_bvWP34Kr";
+const catalogo = document.querySelector(".productos");
+const estadoProductos = document.querySelector("#estado-productos");
+
+// Detalles visuales locales asociados a los IDs verificados en Supabase.
+const detallesProductos = {
+    1: { emoji: "🥨", descripcion: "Churros crujientes con azúcar y canela." },
+    2: { emoji: "🍫", descripcion: "Churros acompañados de delicioso chocolate." },
+    3: { emoji: "🥮", descripcion: "Deliciosos churros rellenos de manjar." }
+};
+
+async function cargarProductos() {
+    estadoProductos.textContent = "Cargando productos...";
+    catalogo.replaceChildren();
+
+    try {
+        const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/productos?select=id,nombre,precio,activo&activo=eq.true&order=id.asc`, {
+            headers: { apikey: SUPABASE_PUBLISHABLE_KEY }
+        });
+        if (!respuesta.ok) throw new Error("No se pudo consultar el catálogo.");
+
+        const productos = await respuesta.json();
+        if (!Array.isArray(productos) || productos.some((producto) =>
+            !producto || !Number.isInteger(producto.id) ||
+            typeof producto.nombre !== "string" || !producto.nombre.trim() ||
+            typeof producto.precio !== "number" || !Number.isFinite(producto.precio) ||
+            producto.precio < 0 || producto.activo !== true
+        )) {
+            throw new Error("El catálogo contiene datos inválidos.");
+        }
+
+        productos.forEach((producto) => {
+            const tarjeta = document.createElement("article");
+            tarjeta.className = "producto";
+            const detalles = detallesProductos[producto.id];
+            if (detalles) {
+                const visual = document.createElement("div");
+                visual.className = "emoji-producto";
+                visual.textContent = detalles.emoji;
+                tarjeta.append(visual);
+            }
+
+            const nombre = document.createElement("h3");
+            nombre.textContent = producto.nombre;
+            tarjeta.append(nombre);
+
+            if (detalles) {
+                const descripcion = document.createElement("p");
+                descripcion.textContent = detalles.descripcion;
+                tarjeta.append(descripcion);
+            }
+
+            const precio = document.createElement("strong");
+            precio.textContent = `S/ ${producto.precio.toFixed(2)}`;
+            const boton = document.createElement("button");
+            boton.type = "button";
+            boton.textContent = "Agregar al carrito";
+            boton.addEventListener("click", () => agregarAlCarrito(producto));
+            tarjeta.append(precio, boton);
+            catalogo.append(tarjeta);
+        });
+
+        estadoProductos.textContent = productos.length ? "" : "No hay productos disponibles.";
+    } catch (error) {
+        catalogo.replaceChildren();
+        estadoProductos.textContent = "No se pudieron cargar los productos. Intenta recargar la página.";
+    }
+}
 
 // Buscamos el lugar donde mostraremos el carrito
 const carritoSeccion = document.querySelector(".carrito");
@@ -124,31 +192,20 @@ carritoSeccion.addEventListener("click", (evento) => {
     mostrarCarrito();
 });
 
-// Agregamos un evento a cada botón
-productos.forEach((producto) => {
-
-    const boton = producto.querySelector("button");
-
-    boton.addEventListener("click", () => {
-
-        const nombre = producto.dataset.nombre;
-        const precio = Number(producto.dataset.precio);
-
-        const productoExistente = carrito.find((item) => item.nombre === nombre);
-
-        if (productoExistente) {
-            productoExistente.cantidad += 1;
-        } else {
-            carrito.push({
-                nombre: nombre,
-                precio: precio,
-                cantidad: 1
-            });
-        }
-
-        mostrarCarrito();
-    });
-});
+function agregarAlCarrito(producto) {
+    const productoExistente = carrito.find((item) => item.id === producto.id);
+    if (productoExistente) {
+        productoExistente.cantidad += 1;
+    } else {
+        carrito.push({
+            id: producto.id,
+            nombre: producto.nombre,
+            precio: producto.precio,
+            cantidad: 1
+        });
+    }
+    mostrarCarrito();
+}
 
 
 // Función para mostrar el carrito
@@ -165,36 +222,41 @@ function mostrarCarrito() {
 
     let total = 0;
 
-    let contenido = `
-        <h2>🛒 Tu carrito</h2>
-    `;
+    carritoSeccion.innerHTML = "<h2>🛒 Tu carrito</h2>";
 
     carrito.forEach((producto, indice) => {
 
         const subtotal = producto.precio * producto.cantidad;
 
-        contenido += `
-            <div class="carrito-producto">
-                <p>${producto.nombre} - Subtotal: S/ ${subtotal.toFixed(2)}</p>
-                <div class="carrito-controles">
-                    <button type="button" data-accion="disminuir" data-indice="${indice}"
-                        aria-label="Disminuir cantidad de ${producto.nombre}"
-                        ${producto.cantidad === 1 ? "disabled" : ""}>-</button>
-                    <span aria-label="Cantidad">${producto.cantidad}</span>
-                    <button type="button" data-accion="aumentar" data-indice="${indice}"
-                        aria-label="Aumentar cantidad de ${producto.nombre}">+</button>
-                    <button type="button" data-accion="eliminar" data-indice="${indice}"
-                        aria-label="Eliminar ${producto.nombre}">Eliminar</button>
-                </div>
-            </div>
-        `;
+        const fila = document.createElement("div");
+        fila.className = "carrito-producto";
+        // Esta plantilla es fija; los datos externos se asignan como texto.
+        fila.innerHTML = `
+            <p></p>
+            <div class="carrito-controles">
+                <button type="button" data-accion="disminuir">-</button>
+                <span aria-label="Cantidad"></span>
+                <button type="button" data-accion="aumentar">+</button>
+                <button type="button" data-accion="eliminar">Eliminar</button>
+            </div>`;
+        fila.querySelector("p").textContent = `${producto.nombre} - Subtotal: S/ ${subtotal.toFixed(2)}`;
+        fila.querySelector("span").textContent = producto.cantidad;
+        fila.querySelectorAll("button").forEach((boton) => {
+            boton.dataset.indice = indice;
+            const accion = boton.dataset.accion;
+            const etiqueta = accion === "aumentar" ? "Aumentar cantidad de" :
+                accion === "disminuir" ? "Disminuir cantidad de" : "Eliminar";
+            boton.setAttribute("aria-label", `${etiqueta} ${producto.nombre}`);
+            boton.disabled = accion === "disminuir" && producto.cantidad === 1;
+        });
+        carritoSeccion.append(fila);
 
         total += subtotal;
     });
 
-    contenido += `
-        <h3>Total: S/ ${total.toFixed(2)}</h3>
-    `;
-
-    carritoSeccion.innerHTML = contenido;
+    const totalElemento = document.createElement("h3");
+    totalElemento.textContent = `Total: S/ ${total.toFixed(2)}`;
+    carritoSeccion.append(totalElemento);
 }
+
+cargarProductos();
