@@ -7,6 +7,84 @@ const formularioPedido = document.querySelector("#formulario-pedido");
 const estadoPedido = document.querySelector("#estado-pedido");
 const vistaPreviaPedido = document.querySelector("#vista-previa-pedido");
 const mensajePedido = document.querySelector("#mensaje-pedido");
+const botonPedido = formularioPedido.querySelector('button[type="submit"]');
+let enviandoPedido = false;
+let solicitudPedido = null;
+
+function pedidoBloqueado() {
+    return enviandoPedido || solicitudPedido?.estado === "incierto";
+}
+
+function actualizarControlesPedido() {
+    const bloqueado = pedidoBloqueado();
+    formularioPedido.querySelectorAll("input, textarea").forEach((campo) => {
+        campo.disabled = bloqueado;
+    });
+    document.querySelectorAll(".productos button, .carrito button").forEach((boton) => {
+        const producto = carrito[Number(boton.dataset.indice)];
+        boton.disabled = bloqueado || (boton.dataset.accion === "disminuir" && producto?.cantidad === 1);
+    });
+    botonPedido.disabled = enviandoPedido;
+    botonPedido.textContent = enviandoPedido ? "Guardando pedido…" :
+        solicitudPedido?.estado === "incierto" ? "Reintentar guardado" : "Enviar pedido por WhatsApp";
+}
+
+function mostrarPedidoGuardado() {
+    if (!NUMERO_WHATSAPP_NEGOCIO) {
+        estadoPedido.textContent = "Pedido guardado correctamente. Falta configurar el número de WhatsApp del negocio; no se ha enviado por WhatsApp.";
+        return;
+    }
+    if (!/^[1-9][0-9]{6,14}$/.test(NUMERO_WHATSAPP_NEGOCIO)) {
+        estadoPedido.textContent = "Pedido guardado. El número de WhatsApp del negocio debe tener entre 7 y 15 dígitos, sin +, espacios ni guiones, y no comenzar con 0.";
+        return;
+    }
+    // Un enlace evita que el navegador bloquee una ventana tras esperar fetch().
+    const enlace = document.createElement("a");
+    enlace.href = `https://wa.me/${NUMERO_WHATSAPP_NEGOCIO}?text=${encodeURIComponent(solicitudPedido.mensaje)}`;
+    enlace.target = "_blank";
+    enlace.rel = "noopener noreferrer";
+    enlace.textContent = "Abrir WhatsApp";
+    estadoPedido.textContent = "Pedido guardado. Confirma el envío en WhatsApp. ";
+    estadoPedido.append(enlace);
+}
+
+async function guardarPedido() {
+    enviandoPedido = true;
+    actualizarControlesPedido();
+    mensajePedido.textContent = solicitudPedido.mensaje;
+    vistaPreviaPedido.hidden = false;
+    estadoPedido.textContent = "Guardando pedido…";
+    const controlador = new AbortController();
+    const temporizador = setTimeout(() => controlador.abort(), 15000);
+    try {
+        const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/rpc/crear_pedido`, {
+            method: "POST",
+            headers: { apikey: SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },
+            body: solicitudPedido.cuerpo,
+            signal: controlador.signal
+        });
+        const resultado = await respuesta.json();
+        if (!respuesta.ok) {
+            if (respuesta.status === 400 && resultado?.code === "PT400") {
+                solicitudPedido = null;
+                estadoPedido.textContent = "Supabase rechazó los datos del pedido. Revisa los campos, las cantidades y la disponibilidad de los productos antes de intentar de nuevo.";
+                return;
+            }
+            throw new Error("No se pudo confirmar el guardado.");
+        }
+        if (resultado !== "solicitud_recibida") throw new Error("Respuesta inesperada.");
+        solicitudPedido.estado = "guardado";
+        mostrarPedidoGuardado();
+    } catch (error) {
+        // Un fallo de red o un timeout no demuestra que el servidor haya revertido.
+        solicitudPedido.estado = "incierto";
+        estadoPedido.textContent = "No se pudo confirmar el guardado. Reintenta sin recargar ni cerrar esta página: se conservarán la misma clave y los mismos datos.";
+    } finally {
+        clearTimeout(temporizador);
+        enviandoPedido = false;
+        actualizarControlesPedido();
+    }
+}
 
 function limpiarVistaPrevia() {
     estadoPedido.textContent = "";
@@ -16,8 +94,13 @@ function limpiarVistaPrevia() {
 
 formularioPedido.addEventListener("input", limpiarVistaPrevia);
 
-formularioPedido.addEventListener("submit", (evento) => {
+formularioPedido.addEventListener("submit", async (evento) => {
     evento.preventDefault();
+    if (enviandoPedido) return;
+    if (solicitudPedido?.estado === "incierto") {
+        await guardarPedido();
+        return;
+    }
     limpiarVistaPrevia();
 
     if (carrito.length === 0) {
@@ -46,6 +129,18 @@ formularioPedido.addEventListener("submit", (evento) => {
         return;
     }
 
+    if (nombre.length > 120 || telefono.length > 40 || direccion.length > 300 || comentario.length > 1000) {
+        estadoPedido.textContent = "Máximos permitidos: nombre 120 caracteres, teléfono 40, dirección 300 y comentario 1000.";
+        return;
+    }
+    if (carrito.length > 100 || carrito.some((producto) =>
+        !Number.isSafeInteger(producto.id) || producto.id <= 0 ||
+        !Number.isInteger(producto.cantidad) || producto.cantidad < 1 || producto.cantidad > 99
+    )) {
+        estadoPedido.textContent = "El pedido admite hasta 100 productos distintos, con cantidades entre 1 y 99.";
+        return;
+    }
+
     let total = 0;
     const lineas = [
         "Pedido para Churros Dulces", "",
@@ -66,23 +161,35 @@ formularioPedido.addEventListener("submit", (evento) => {
     }
 
     const mensaje = lineas.join("\n");
-    const mensajeCodificado = encodeURIComponent(mensaje);
     // textContent muestra los datos como texto, nunca como HTML.
     mensajePedido.textContent = mensaje;
     vistaPreviaPedido.hidden = false;
 
-    if (!NUMERO_WHATSAPP_NEGOCIO) {
-        estadoPedido.textContent = "El pedido se generó correctamente, pero falta configurar el número de WhatsApp del negocio. No se ha enviado.";
+    const datos = {
+        p_nombre_cliente: nombre,
+        p_telefono_cliente: telefono,
+        p_direccion_entrega: direccion,
+        p_comentario: comentario || null,
+        p_productos: carrito.map((producto) => ({ producto_id: producto.id, cantidad: producto.cantidad }))
+            .sort((a, b) => a.producto_id - b.producto_id)
+    };
+    const firma = JSON.stringify(datos);
+    if (solicitudPedido?.estado === "guardado" && solicitudPedido.firma === firma) {
+        mensajePedido.textContent = solicitudPedido.mensaje;
+        mostrarPedidoGuardado();
         return;
     }
-
-    if (!/^[1-9][0-9]{6,14}$/.test(NUMERO_WHATSAPP_NEGOCIO)) {
-        estadoPedido.textContent = "El número del negocio debe tener entre 7 y 15 dígitos, incluir el código de país y no contener +, espacios ni guiones. No puede comenzar con 0.";
+    if (typeof globalThis.crypto?.randomUUID !== "function") {
+        estadoPedido.textContent = "Abre la página mediante localhost o HTTPS para generar la clave del pedido.";
         return;
     }
-
-    window.open(`https://wa.me/${NUMERO_WHATSAPP_NEGOCIO}?text=${mensajeCodificado}`, "_blank", "noopener,noreferrer");
-    estadoPedido.textContent = "Pedido preparado. Confirma el envío en WhatsApp.";
+    solicitudPedido = {
+        firma,
+        cuerpo: JSON.stringify({ ...datos, p_clave_solicitud: crypto.randomUUID() }),
+        mensaje,
+        estado: "pendiente"
+    };
+    await guardarPedido();
 });
 
 // Botón para ir a la sección de productos
@@ -159,6 +266,7 @@ async function cargarProductos() {
         });
 
         estadoProductos.textContent = productos.length ? "" : "No hay productos disponibles.";
+        actualizarControlesPedido();
     } catch (error) {
         catalogo.replaceChildren();
         estadoProductos.textContent = "No se pudieron cargar los productos. Intenta recargar la página.";
@@ -170,6 +278,7 @@ const carritoSeccion = document.querySelector(".carrito");
 
 // El evento permanece en la sección aunque volvamos a dibujar sus botones.
 carritoSeccion.addEventListener("click", (evento) => {
+    if (pedidoBloqueado()) return;
     const boton = evento.target.closest("button[data-accion]");
 
     if (!boton) return;
@@ -193,6 +302,7 @@ carritoSeccion.addEventListener("click", (evento) => {
 });
 
 function agregarAlCarrito(producto) {
+    if (pedidoBloqueado()) return;
     const productoExistente = carrito.find((item) => item.id === producto.id);
     if (productoExistente) {
         productoExistente.cantidad += 1;
