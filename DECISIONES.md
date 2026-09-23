@@ -89,6 +89,10 @@ Evitar precios manipulados desde el navegador, pedidos incompletos, duplicados p
 
 El usuario confirmó un pedido real desde el formulario con total S/ 23.00, dos detalles correctos y estado `pendiente`. También confirmó idempotencia, ejecución como `anon` con Publishable key (HTTP 200) y SELECT directo bloqueado en ambas tablas privadas (HTTP 401, código 42501).
 
+Ronda de seguridad confirmada por el usuario el 2026-09-22: un pedido con producto 1 válido y producto 999999 inexistente devolvió PT400: "Uno de los productos no está disponible" y se revirtió por completo. Antes y después hubo 3 pedidos y 5 detalles, sin registros asociados a la clave de prueba.
+
+Con Publishable key y rol `anon` desde el navegador, INSERT directo en ambas tablas y UPDATE/DELETE directo en `pedidos` devolvieron HTTP 401 / PostgreSQL 42501. Los conteos permanecieron iguales y no quedaron registros de prueba. Esta ronda no verifica UPDATE/DELETE en `detalle_pedido` ni reintentos concurrentes o con pérdida de respuesta.
+
 El propietario de la RPC tiene privilegios amplios: su código y permisos requieren revisión cuidadosa. La respuesta no contiene importes definitivos; la vista previa mantiene los precios cargados en el navegador. Las pruebas pendientes y la protección contra abuso antes de publicar se detallan en ROADMAP.md.
 
 ### Fecha
