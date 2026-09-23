@@ -91,7 +91,17 @@ El usuario confirmó un pedido real desde el formulario con total S/ 23.00, dos 
 
 Ronda de seguridad confirmada por el usuario el 2026-09-22: un pedido con producto 1 válido y producto 999999 inexistente devolvió PT400: "Uno de los productos no está disponible" y se revirtió por completo. Antes y después hubo 3 pedidos y 5 detalles, sin registros asociados a la clave de prueba.
 
-Con Publishable key y rol `anon` desde el navegador, INSERT directo en ambas tablas y UPDATE/DELETE directo en `pedidos` devolvieron HTTP 401 / PostgreSQL 42501. Los conteos permanecieron iguales y no quedaron registros de prueba. Esta ronda no verifica UPDATE/DELETE en `detalle_pedido` ni reintentos concurrentes o con pérdida de respuesta.
+Con Publishable key y rol `anon` desde el navegador, INSERT directo en ambas tablas y UPDATE/DELETE directo en `pedidos` devolvieron HTTP 401 / PostgreSQL 42501. Los conteos permanecieron iguales y no quedaron registros de prueba. Esta ronda no verifica UPDATE/DELETE en `detalle_pedido`.
+
+Prueba de reintento e idempotencia superada, confirmada por el usuario el 2026-09-22 desde la interfaz real:
+
+- Pedido ficticio con `producto_id` 3, cantidad 2, total esperado S/ 16.00 y comentario `PRUEBA-REINTENTO-20260922-01 - No preparar ni entregar`.
+- Estado inicial: 3 pedidos, 5 detalles y 0 pedidos con esa marca.
+- Se interceptó solo la primera llamada a `crear_pedido`: la petición real llegó a Supabase y respondió HTTP 200 con `solicitud_recibida`; después se simuló la pérdida de esa confirmación. La interfaz quedó en estado incierto y mostró "Reintentar guardado".
+- Después del primer intento: 4 pedidos, 6 detalles y 1 pedido con la marca.
+- Al pulsar "Reintentar guardado" sin recargar, se utilizó el flujo previsto de reintento con la misma clave y datos conservados en memoria. La interfaz mostró "Pedido guardado correctamente". Los conteos siguieron en 4 pedidos, 6 detalles y 1 pedido con la marca: no se duplicaron el pedido ni su detalle. El registro ficticio queda identificado como prueba, no para preparar ni entregar.
+
+Esta prueba no cubre solicitudes realmente concurrentes, recuperación después de recargar/cerrar la página ni una caída real de red. La pérdida de confirmación fue simulada; el estado de reintento continuó en memoria con la página abierta.
 
 El propietario de la RPC tiene privilegios amplios: su código y permisos requieren revisión cuidadosa. La respuesta no contiene importes definitivos; la vista previa mantiene los precios cargados en el navegador. Las pruebas pendientes y la protección contra abuso antes de publicar se detallan en ROADMAP.md.
 
