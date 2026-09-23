@@ -101,7 +101,16 @@ Prueba de reintento e idempotencia superada, confirmada por el usuario el 2026-0
 - Después del primer intento: 4 pedidos, 6 detalles y 1 pedido con la marca.
 - Al pulsar "Reintentar guardado" sin recargar, se utilizó el flujo previsto de reintento con la misma clave y datos conservados en memoria. La interfaz mostró "Pedido guardado correctamente". Los conteos siguieron en 4 pedidos, 6 detalles y 1 pedido con la marca: no se duplicaron el pedido ni su detalle. El registro ficticio queda identificado como prueba, no para preparar ni entregar.
 
-Esta prueba no cubre solicitudes realmente concurrentes, recuperación después de recargar/cerrar la página ni una caída real de red. La pérdida de confirmación fue simulada; el estado de reintento continuó en memoria con la página abierta.
+En la prueba de reintento, la pérdida de confirmación fue simulada; el estado de reintento continuó en memoria con la página abierta.
+
+Prueba manual de concurrencia superada, confirmada por el usuario:
+
+- Desde la consola del navegador se lanzaron dos llamadas a `public.crear_pedido`, creando ambas promesas antes de esperar sus respuestas. Ambas usaron la misma `clave_solicitud` (`ca4dda20-64d1-467d-9a44-0c17f10bc47e`), los mismos datos ficticios y productos: producto 1, cantidad 1; producto 3, cantidad 2.
+- Estado inicial: 4 pedidos y 6 detalles; 0 pedidos y 0 detalles para esa clave.
+- Ambas peticiones respondieron HTTP 200 y `solicitud_recibida`.
+- Estado final: 5 pedidos y 8 detalles; 1 pedido y 2 detalles para esa clave. Las dos solicitudes dejaron un único pedido completo, sin duplicados.
+
+Esta prueba aporta evidencia del comportamiento concurrente, pero no sustituye una revisión formal del cuerpo SQL completo de la RPC para garantizar todos los posibles casos de concurrencia. Siguen sin probarse la recuperación después de recargar/cerrar la página y una caída real de red.
 
 El propietario de la RPC tiene privilegios amplios: su código y permisos requieren revisión cuidadosa. La respuesta no contiene importes definitivos; la vista previa mantiene los precios cargados en el navegador. Las pruebas pendientes y la protección contra abuso antes de publicar se detallan en ROADMAP.md.
 
