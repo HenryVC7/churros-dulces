@@ -47,8 +47,10 @@
 - Limitaciones actuales: la clave de reintento no persiste al recargar o cerrar; la vista previa usa precios del catálogo cargado y la RPC no devuelve los importes guardados. Debe definirse cómo manejar cambios de precio antes de publicar; la persistencia entre recargas queda como mejora por evaluar.
 
 ## Fase 7 - APIs y automatización
-- Integrar APIs.
-- Crear automatizaciones.
+- Primera automatización: avisar por email al negocio cuando se cree un pedido nuevo.
+- Completado: primera pieza, outbox privada `public.avisos_pedido`, con un aviso por pedido. `crear_pedido` registra el aviso pendiente después de actualizar el total y antes del retorno final, en la misma transacción.
+- Verificado por el usuario (2026-09-24): migración sin alterar pedidos existentes, creación del aviso desde la web e idempotencia secuencial y concurrente sin duplicados. Conteos finales: 8 pedidos, 13 detalles y 3 avisos. Detalle de las pruebas en la Decisión 006; son evidencia práctica, no garantía formal de todos los posibles órdenes de ejecución concurrente.
+- Pendiente: diseñar e implementar el procesamiento de avisos, elegir e integrar el proveedor de email, configurar sus credenciales secretas en backend y comprobar envíos y manejo de fallos. Todavía no se envían emails: los avisos permanecen pendientes y no hay proveedor ni API key de email configurados.
 - Explorar agentes de IA.
 
 ## Fase 8 - Publicación
@@ -66,3 +68,4 @@
 - El número comercial definitivo está pendiente de configuración intencionalmente. `NUMERO_WHATSAPP_NEGOCIO` permanece vacío: el pedido se guarda en Supabase y la vista previa sigue disponible, pero no se abre ni se envía por WhatsApp. El número personal utilizado para la prueba fue retirado.
 - Fase 5 - Git y GitHub: los hitos definidos ya están realizados (repositorio local, primer commit y conexión y subida a GitHub).
 - Fase 6 - Backend: alcance funcional completado y guardado real probado por el usuario. Quedan las verificaciones y medidas previas a publicación detalladas en la fase; no significa que la web esté lista para producción.
+- Fase 7 - APIs y automatización: en progreso. Outbox privada implementada y probada; procesamiento y envío de emails pendientes.

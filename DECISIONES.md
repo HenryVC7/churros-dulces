@@ -117,3 +117,40 @@ El propietario de la RPC tiene privilegios amplios: su código y permisos requie
 ### Fecha
 
 2026-09-20
+
+---
+
+## Decisión 006 - Outbox privada para avisos de pedidos
+
+### Decisión
+
+- Registrar un aviso por pedido nuevo en `public.avisos_pedido`, como primera pieza del futuro email al negocio. La tabla contiene `id` UUID generado automáticamente, `pedido_id` UUID obligatorio, `created_at` automático y `estado` inicialmente `pendiente`, limitado a `pendiente` o `procesado`.
+- Relacionar `pedido_id` con `public.pedidos(id)` mediante FOREIGN KEY con `ON DELETE RESTRICT` y `UNIQUE (pedido_id)` para impedir avisos duplicados. No duplicar datos del cliente ni importes en la outbox.
+- Mantener RLS activado, sin políticas públicas y con permisos directos revocados para `PUBLIC`, `anon` y `authenticated`.
+- Insertar el aviso desde `crear_pedido` usando `v_pedido_id`, después de actualizar `pedidos.total` y antes del retorno final, sin parámetros nuevos del navegador. Pedido, detalles y aviso forman parte de la misma transacción; un error revierte el conjunto. Los reintentos con una clave existente retornan antes de insertar otro aviso.
+- Separar el registro del aviso de su futuro envío: no hay procesamiento, proveedor ni API key de email configurados y todavía no se envían emails. Los avisos permanecen pendientes. No se generaron avisos para pedidos anteriores a la migración.
+
+### Motivo
+
+Registrar de forma consistente la tarea pendiente sin depender del servicio de email durante el guardado del pedido. La unicidad del aviso no garantiza por sí sola que el futuro envío externo no se duplique.
+
+### Validación y límites
+
+Pruebas confirmadas por el usuario el 2026-09-24. Los conteos son globales:
+
+| Paso | Pedidos | Detalles | Avisos |
+| --- | --- | --- | --- |
+| Antes de la migración | 5 | 8 | Tabla aún no creada |
+| Después de la migración | 5 | 8 | 0 |
+| Pedido desde la web con tres productos | 6 | 11 | 1 |
+| Primer envío con clave fija | 7 | 12 | 2 |
+| Repetición del mismo envío y clave | 7 | 12 | 2 |
+| Dos llamadas concurrentes con una segunda clave nueva | 8 | 13 | 3 |
+
+El pedido desde la web tuvo total S/ 27.00 y su aviso quedó relacionado correctamente, con estado `pendiente`. La repetición secuencial no duplicó pedido, detalle ni aviso. En la prueba concurrente, ambas llamadas respondieron HTTP 200 y `solicitud_recibida`; para esa clave se creó solo un pedido, un detalle y un aviso.
+
+Estas pruebas aportan evidencia práctica, no una garantía formal para todos los posibles órdenes de ejecución concurrente. No prueban el envío de emails. Quedan por comprobar específicamente los permisos directos de la nueva outbox y la reversión conjunta con avisos ante un pedido inválido; las pruebas previas de Fase 6 no incluían esta tabla.
+
+### Fecha
+
+2026-09-24
