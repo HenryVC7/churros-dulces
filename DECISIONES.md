@@ -124,11 +124,11 @@ El propietario de la RPC tiene privilegios amplios: su código y permisos requie
 
 ### Decisión
 
-- Registrar un aviso por pedido nuevo en `public.avisos_pedido`, como primera pieza del futuro email al negocio. La tabla contiene `id` UUID generado automáticamente, `pedido_id` UUID obligatorio, `created_at` automático y `estado` inicialmente `pendiente`, limitado a `pendiente` o `procesado`.
+- Registrar un aviso por pedido nuevo en `public.avisos_pedido`, como primera pieza del futuro email al negocio. La estructura inicial contiene `id` UUID generado automáticamente, `pedido_id` UUID obligatorio, `created_at` automático y `estado` inicialmente `pendiente`, limitado en esa etapa a `pendiente` o `procesado`. Su evolución se documenta en la Decisión 007.
 - Relacionar `pedido_id` con `public.pedidos(id)` mediante FOREIGN KEY con `ON DELETE RESTRICT` y `UNIQUE (pedido_id)` para impedir avisos duplicados. No duplicar datos del cliente ni importes en la outbox.
 - Mantener RLS activado, sin políticas públicas y con permisos directos revocados para `PUBLIC`, `anon` y `authenticated`.
 - Insertar el aviso desde `crear_pedido` usando `v_pedido_id`, después de actualizar `pedidos.total` y antes del retorno final, sin parámetros nuevos del navegador. Pedido, detalles y aviso forman parte de la misma transacción; un error revierte el conjunto. Los reintentos con una clave existente retornan antes de insertar otro aviso.
-- Separar el registro del aviso de su futuro envío: no hay procesamiento, proveedor ni API key de email configurados y todavía no se envían emails. Los avisos permanecen pendientes. No se generaron avisos para pedidos anteriores a la migración.
+- Separar el registro del aviso de su futuro envío: en esta primera etapa no había procesamiento, proveedor ni API key de email configurados y los avisos permanecían pendientes. No se generaron avisos para pedidos anteriores a la migración. El mecanismo posterior de reserva/finalización se documenta en la Decisión 007; todavía no se envían emails.
 
 ### Motivo
 
@@ -154,3 +154,40 @@ Estas pruebas aportan evidencia práctica, no una garantía formal para todos lo
 ### Fecha
 
 2026-09-24
+
+---
+
+## Decisión 007 - Reserva y finalización privada de avisos
+
+### Decisión
+
+- Ampliar `avisos_pedido` con `intentos`, `disponible_desde`, `token_reserva`, `reserva_hasta`, `procesado_at` y `ultimo_error`. Los estados actuales son `pendiente`, `procesando`, `procesado` y `error`, con restricciones de coherencia y máximo 3 intentos.
+- Reservar como máximo un aviso por llamada mediante `public.reservar_aviso_pedido()`, con selección por `created_at, id` entre filas elegibles y bloqueo `FOR UPDATE SKIP LOCKED`. Cada reserva incrementa intentos, genera un token nuevo y vence a los 5 minutos; si no hay trabajo disponible, devuelve un resultado claro sin error.
+- Finalizar mediante `public.finalizar_aviso_pedido(...)`, comprobando bajo bloqueo el estado `procesando`, el token y la vigencia de la reserva. El éxito establece `procesado` y su fecha, y limpia reserva y error. Un fallo recuperable programa disponibilidad a los 60 segundos y limpia la reserva; el tercer fallo pasa a `error`, sin cuarto intento. La finalización no incrementa intentos.
+- Rechazar un token incorrecto con `reserva_no_valida` sin modificar la fila. Una reserva vencida devuelve `reserva_vencida`; la RPC de reserva puede recuperarla con el siguiente intento y otro token, o pasarla a `error` si agotó los 3 intentos. Después de reasignarla, el token anterior ya no permite finalizar.
+- Mantener las RPC privadas: ejecución revocada para `PUBLIC`, `anon` y `authenticated`, y concedida a `service_role` como rol de backend. Usar `SECURITY DEFINER`, propietario `postgres`, `search_path` vacío y tablas con esquema explícito. No exponer credenciales administrativas en el frontend.
+- Aceptar solo códigos de error conocidos y guardar mensajes fijos limitados a 200 caracteres, nunca secretos ni respuestas completas del backend.
+- Interpretar `procesado` como finalización educativa/controlada del procesamiento, no como email enviado. Todavía no existe una Edge Function, ejecución automatizada ni proveedor de email configurado.
+
+### Motivo
+
+Controlar reservas temporales, reintentos y finalizaciones sin permitir que un trabajador antiguo modifique una reserva reasignada, manteniendo los avisos privados y el guardado de pedidos separado del futuro envío.
+
+### Validación y límites
+
+Pruebas confirmadas por el usuario el 2026-09-29 con BEGIN/ROLLBACK:
+
+- Reserva y finalización exitosa.
+- Token incorrecto rechazado sin modificar la reserva.
+- Fallo recuperable: retorno a `pendiente`, espera de 60 segundos y comprobación por ID de que el aviso aún no era elegible.
+- Tercer fallo simulado: estado `error`, intentos 3 y aviso no elegible para un cuarto intento.
+- Vencimiento simulado: `reserva_vencida` sin modificar indebidamente la fila; recuperación determinista del mismo aviso con intento siguiente, token nuevo y nuevo plazo.
+- Tras la reasignación, token antiguo rechazado con `reserva_no_valida` y token nuevo capaz de finalizar correctamente.
+
+Permisos comprobados en ambas RPC: EXECUTE falso para `anon` y `authenticated`, verdadero para `service_role`. Todos los ROLLBACK dejaron los 3 avisos originales en `pendiente`, intentos 0 y `token_reserva`, `reserva_hasta`, `procesado_at` y `ultimo_error` en NULL.
+
+Estas pruebas son evidencia práctica de los casos descritos, no una garantía formal de todos los escenarios concurrentes. Renovar el token invalida la autorización anterior, pero no detiene físicamente al trabajador antiguo ni garantiza efectos externos exactamente una vez. Se conservan los pendientes anteriores de permisos directos de la outbox y reversión conjunta ante un pedido inválido. La Edge Function coordinadora, su ejecución automatizada y el envío de emails siguen pendientes.
+
+### Fecha
+
+2026-09-29
